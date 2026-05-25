@@ -2,6 +2,7 @@ package com.nikhil.linkedin.connections_service.service;
 
 import com.nikhil.linkedin.connections_service.auth.UserContextHolder;
 import com.nikhil.linkedin.connections_service.entity.Person;
+import com.nikhil.linkedin.connections_service.exception.BadRequestException;
 import com.nikhil.linkedin.connections_service.event.AcceptConnectionRequestEvent;
 import com.nikhil.linkedin.connections_service.event.SendConnectionRequestEvent;
 import com.nikhil.linkedin.connections_service.repository.PersonRepository;
@@ -75,7 +76,7 @@ class ConnectionsServiceTest {
     @Test
     void sendConnectionRequest_throwsWhenSameUser() {
         UserContextHolder.setCurrentUserId(1L);
-        assertThrows(RuntimeException.class, () -> connectionsService.sendConnectionRequest(1L));
+        assertThrows(BadRequestException.class, () -> connectionsService.sendConnectionRequest(1L));
     }
 
     @Test
@@ -83,7 +84,7 @@ class ConnectionsServiceTest {
         UserContextHolder.setCurrentUserId(1L);
         when(personRepository.connectionRequestExists(1L, 2L)).thenReturn(true);
 
-        assertThrows(RuntimeException.class, () -> connectionsService.sendConnectionRequest(2L));
+        assertThrows(BadRequestException.class, () -> connectionsService.sendConnectionRequest(2L));
     }
 
     @Test

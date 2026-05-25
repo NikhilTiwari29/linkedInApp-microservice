@@ -27,6 +27,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(GlobalExceptionHandler.class)
 class PostsControllerTest {
 
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String TEST_USER_ID = "1";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -48,6 +51,7 @@ class PostsControllerTest {
         when(postsService.createPost(any())).thenReturn(dto);
 
         mockMvc.perform(post("/core")
+                        .header(USER_ID_HEADER, TEST_USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -62,7 +66,8 @@ class PostsControllerTest {
 
         when(postsService.getPostById(5L)).thenReturn(dto);
 
-        mockMvc.perform(get("/core/5"))
+        mockMvc.perform(get("/core/5")
+                        .header(USER_ID_HEADER, TEST_USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").value("Post content"));
     }
@@ -72,8 +77,21 @@ class PostsControllerTest {
         when(postsService.getPostById(99L))
                 .thenThrow(new ResourceNotFoundException("Post not found"));
 
-        mockMvc.perform(get("/core/99"))
+        mockMvc.perform(get("/core/99")
+                        .header(USER_ID_HEADER, TEST_USER_ID))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createPost_returns400WhenContentBlank() throws Exception {
+        PostCreateRequestDto request = new PostCreateRequestDto();
+        request.setContent("");
+
+        mockMvc.perform(post("/core")
+                        .header(USER_ID_HEADER, TEST_USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -82,7 +100,8 @@ class PostsControllerTest {
         dto.setId(1L);
         when(postsService.getFeedForCurrentUser()).thenReturn(List.of(dto));
 
-        mockMvc.perform(get("/core/feed"))
+        mockMvc.perform(get("/core/feed")
+                        .header(USER_ID_HEADER, TEST_USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
     }

@@ -2,6 +2,7 @@ package com.nikhil.linkedin.connections_service.service;
 
 import com.nikhil.linkedin.connections_service.auth.UserContextHolder;
 import com.nikhil.linkedin.connections_service.entity.Person;
+import com.nikhil.linkedin.connections_service.exception.BadRequestException;
 import com.nikhil.linkedin.connections_service.event.AcceptConnectionRequestEvent;
 import com.nikhil.linkedin.connections_service.event.SendConnectionRequestEvent;
 import com.nikhil.linkedin.connections_service.repository.PersonRepository;
@@ -33,17 +34,17 @@ public class ConnectionsService {
         log.info("Trying to send connection request, sender: {}, reciever: {}", senderId, receiverId);
 
         if(senderId.equals(receiverId)) {
-            throw new RuntimeException("Both sender and receiver are the same");
+            throw new BadRequestException("Both sender and receiver are the same");
         }
 
         boolean alreadySentRequest = personRepository.connectionRequestExists(senderId, receiverId);
         if (alreadySentRequest) {
-            throw new RuntimeException("Connection request already exists, cannot send again");
+            throw new BadRequestException("Connection request already exists, cannot send again");
         }
 
         boolean alreadyConnected = personRepository.alreadyConnected(senderId, receiverId);
         if(alreadyConnected) {
-            throw new RuntimeException("Already connected users, cannot add connection request");
+            throw new BadRequestException("Already connected users, cannot add connection request");
         }
 
         log.info("Successfully sent the connection request");
@@ -65,7 +66,7 @@ public class ConnectionsService {
 
         boolean connectionRequestExists = personRepository.connectionRequestExists(senderId, receiverId);
         if (!connectionRequestExists) {
-            throw new RuntimeException("No connection request exists to accept");
+            throw new BadRequestException("No connection request exists to accept");
         }
 
         personRepository.acceptConnectionRequest(senderId, receiverId);
@@ -85,7 +86,7 @@ public class ConnectionsService {
 
         boolean connectionRequestExists = personRepository.connectionRequestExists(senderId, receiverId);
         if (!connectionRequestExists) {
-            throw new RuntimeException("No connection request exists, cannot delete");
+            throw new BadRequestException("No connection request exists, cannot delete");
         }
 
         personRepository.rejectConnectionRequest(senderId, receiverId);

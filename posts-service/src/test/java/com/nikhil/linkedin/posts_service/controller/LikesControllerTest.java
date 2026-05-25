@@ -26,7 +26,8 @@ class LikesControllerTest {
     void likePost_returns204() throws Exception {
         doNothing().when(postLikeService).likePost(10L);
 
-        mockMvc.perform(post("/likes/10"))
+        mockMvc.perform(post("/likes/10")
+                        .header("X-User-Id", "1"))
                 .andExpect(status().isNoContent());
 
         verify(postLikeService).likePost(10L);
@@ -36,7 +37,8 @@ class LikesControllerTest {
     void unlikePost_returns204() throws Exception {
         doNothing().when(postLikeService).unlikePost(10L);
 
-        mockMvc.perform(delete("/likes/10"))
+        mockMvc.perform(delete("/likes/10")
+                        .header("X-User-Id", "1"))
                 .andExpect(status().isNoContent());
 
         verify(postLikeService).unlikePost(10L);

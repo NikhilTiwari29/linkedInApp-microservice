@@ -59,6 +59,32 @@ class AuthenticationFilterTest {
     }
 
     @Test
+    void rejectsMalformedBearerHeader() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/posts/core")
+                .header("Authorization", "Bearertoken-without-space")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        GatewayFilter filter = authenticationFilter.apply(new AuthenticationFilter.Config());
+
+        StepVerifier.create(filter.filter(exchange, chain -> Mono.empty()))
+                .verifyComplete();
+
+        assertEquals(HttpStatus.UNAUTHORIZED, exchange.getResponse().getStatusCode());
+    }
+
+    @Test
+    void extractBearerToken_returnsNullForInvalidHeaders() {
+        assertEquals(null, AuthenticationFilter.extractBearerToken(null));
+        assertEquals(null, AuthenticationFilter.extractBearerToken("Basic abc"));
+        assertEquals(null, AuthenticationFilter.extractBearerToken("Bearer "));
+    }
+
+    @Test
+    void extractBearerToken_parsesValidHeader() {
+        assertEquals("my-token", AuthenticationFilter.extractBearerToken("Bearer my-token"));
+    }
+
+    @Test
     void addsUserIdHeaderWhenTokenValid() {
         MockServerHttpRequest request = MockServerHttpRequest.get("/posts/core")
                 .header("Authorization", "Bearer valid-token")

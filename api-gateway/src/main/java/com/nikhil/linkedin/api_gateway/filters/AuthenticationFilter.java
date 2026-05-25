@@ -13,6 +13,8 @@ import org.springframework.web.server.ServerWebExchange;
 @Component
 public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
+    private static final String BEARER_PREFIX = "Bearer ";
+
     private final JwtService jwtService;
 
     public AuthenticationFilter(JwtService jwtService) {
@@ -23,17 +25,16 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
-            log.info("Login request: {}", exchange.getRequest().getURI());
+            log.debug("Authenticating request: {}", exchange.getRequest().getURI());
 
             final String tokenHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+            final String token = extractBearerToken(tokenHeader);
 
-            if(tokenHeader == null || !tokenHeader.startsWith("Bearer")) {
+            if (token == null) {
                 exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-                log.error("Authorization token header not found");
+                log.warn("Missing or invalid Authorization header for {}", exchange.getRequest().getURI());
                 return exchange.getResponse().setComplete();
             }
-
-            final String token = tokenHeader.split("Bearer ")[1];
 
             try {
                 String userId = jwtService.getUserIdFromToken(token);
@@ -44,11 +45,19 @@ public class AuthenticationFilter extends AbstractGatewayFilterFactory<Authentic
 
                 return chain.filter(modifiedExchange);
             } catch (JwtException e) {
-                log.error("JWT Exception: {}", e.getLocalizedMessage());
+                log.error("JWT validation failed: {}", e.getMessage());
                 exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                 return exchange.getResponse().setComplete();
             }
         };
+    }
+
+    static String extractBearerToken(String tokenHeader) {
+        if (tokenHeader == null || !tokenHeader.regionMatches(true, 0, BEARER_PREFIX, 0, BEARER_PREFIX.length())) {
+            return null;
+        }
+        String token = tokenHeader.substring(BEARER_PREFIX.length()).trim();
+        return token.isEmpty() ? null : token;
     }
 
     public static class Config {

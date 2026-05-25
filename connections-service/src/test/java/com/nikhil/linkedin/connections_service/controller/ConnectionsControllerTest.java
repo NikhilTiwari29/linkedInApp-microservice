@@ -1,11 +1,13 @@
 package com.nikhil.linkedin.connections_service.controller;
 
 import com.nikhil.linkedin.connections_service.entity.Person;
+import com.nikhil.linkedin.connections_service.exception.GlobalExceptionHandler;
 import com.nikhil.linkedin.connections_service.service.ConnectionsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
@@ -17,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = ConnectionsController.class)
+@Import(GlobalExceptionHandler.class)
 class ConnectionsControllerTest {
 
     @Autowired

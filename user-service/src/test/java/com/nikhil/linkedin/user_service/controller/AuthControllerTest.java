@@ -70,6 +70,18 @@ class AuthControllerTest {
     }
 
     @Test
+    void signUp_returns400WhenValidationFails() throws Exception {
+        SignupRequestDto request = new SignupRequestDto();
+        request.setEmail("not-an-email");
+        request.setPassword("short");
+
+        mockMvc.perform(post("/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void login_returnsToken() throws Exception {
         LoginRequestDto request = new LoginRequestDto();
         request.setEmail("alice@example.com");

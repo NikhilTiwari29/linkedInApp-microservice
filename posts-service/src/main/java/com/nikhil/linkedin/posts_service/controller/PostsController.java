@@ -3,6 +3,7 @@ package com.nikhil.linkedin.posts_service.controller;
 import com.nikhil.linkedin.posts_service.dto.PostCreateRequestDto;
 import com.nikhil.linkedin.posts_service.dto.PostDto;
 import com.nikhil.linkedin.posts_service.service.PostsService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class PostsController {
     private final PostsService postsService;
 
     @PostMapping
-    public ResponseEntity<PostDto> createPost(@RequestBody PostCreateRequestDto postDto) {
+    public ResponseEntity<PostDto> createPost(@Valid @RequestBody PostCreateRequestDto postDto) {
         PostDto createdPost = postsService.createPost(postDto);
         return new ResponseEntity<>(createdPost, HttpStatus.CREATED);
     }

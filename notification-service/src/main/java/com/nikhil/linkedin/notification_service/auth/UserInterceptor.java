@@ -9,18 +9,23 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class UserInterceptor implements HandlerInterceptor {
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String userId = request.getHeader("X-User-Id");
-        if(userId != null) {
-            UserContextHolder.setCurrentUserId(Long.valueOf(userId));
+        if (userId == null || userId.isBlank()) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
         }
-
-        return HandlerInterceptor.super.preHandle(request, response, handler);
+        try {
+            UserContextHolder.setCurrentUserId(Long.valueOf(userId));
+        } catch (NumberFormatException ex) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+        }
+        return true;
     }
 
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         UserContextHolder.clear();
     }
 }

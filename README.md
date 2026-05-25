@@ -46,7 +46,8 @@ flowchart TB
 
 - **Database-per-service** with polyglot persistence (PostgreSQL + Neo4j)
 - **Event-driven** notifications via Kafka
-- **JWT authentication** at API Gateway with `X-User-Id` propagation
+- **JWT authentication** at API Gateway with `X-User-Id` propagation (see [Security model](#security-model))
+- **Request validation** on signup, login, and post creation (`@Valid` + Bean Validation)
 - **User signup sync** — `UserCreatedEvent` auto-creates Neo4j `Person` nodes
 - **Connection feed** — `GET /api/v1/posts/core/feed`
 - **Notification inbox** — `GET /api/v1/notifications/core/inbox`
@@ -137,6 +138,24 @@ curl http://localhost:8080/api/v1/notifications/core/inbox \
 | GET | `/api/v1/notifications/core/inbox` | Yes | Notification inbox |
 | POST | `/api/v1/uploads/file` | Yes | Upload file |
 
+## Security model
+
+Authentication is enforced at the **API Gateway**:
+
+1. Client sends `Authorization: Bearer <JWT>` on protected routes.
+2. Gateway validates the JWT and injects `X-User-Id` on the downstream request.
+3. Posts, connections, and notification services **require** `X-User-Id` and return `401` if it is missing or invalid.
+
+**Important:** Downstream services trust `X-User-Id` only when traffic comes through the gateway. In production, use network policies (Docker/Kubernetes) so service ports are not exposed publicly without the gateway.
+
+| Layer | Responsibility |
+|-------|----------------|
+| Gateway | JWT validation, correlation IDs |
+| Domain services | Require `X-User-Id`, business rules |
+| Kafka | Async events between services |
+
+Set `JWT_SECRET_KEY` (min 32 characters) in `.env` / deployment — never rely on the dev default in production.
+
 ## Configuration
 
 Set environment variables via `.env` (see `.env.example`):
@@ -202,8 +221,11 @@ cd user-service && ./mvnw test
 | **Unit tests** | Services, consumers, JWT, password hashing |
 | **WebMvc tests** | REST controllers (auth, posts, connections, notifications, upload) |
 | **Gateway tests** | JWT auth filter, correlation ID filter |
+| **Integration tests** | Full signup → login flow in user-service (H2, no Docker) |
 
 **50+ test methods** across 7 services. Tests use Mockito + `@WebMvcTest` with H2/in-memory config (no Docker required for CI).
+
+CI runs on every push/PR via `.github/workflows/ci.yml` (matrix build across all 7 services).
 
 ## Tech Stack
 
