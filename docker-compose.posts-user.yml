@@ -26,7 +26,7 @@ services:
       - user-db-data:/var/lib/postgresql/data
 
   posts-service:
-    image: nikhil55149/linkedin-app/posts-service
+    image: nikhiltiwarip29/linkedin-app/posts-service
     container_name: posts-service
     networks:
       - linkedin-network
@@ -34,7 +34,7 @@ services:
       - posts-db
 
   user-service:
-    image: nikhil55149/linkedin-app/user-service
+    image: nikhiltiwarip29/linkedin-app/user-service
     container_name: user-service
     networks:
       - linkedin-network
