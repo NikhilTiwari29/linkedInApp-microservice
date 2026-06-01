@@ -1,164 +1,257 @@
-version: "3.8"
+version: "3.8" # Docker Compose specification version
 
 services:
-  kafka:
-    image: docker.io/bitnami/kafka:3.8
+
+  kafka: # Kafka broker service. Docker DNS hostname: kafka
+    image: docker.io/bitnami/kafka:3.8 # Bitnami Kafka image
     container_name: kafka
     volumes:
-      - "kafka_data:/bitnami"
+      - "kafka_data:/bitnami" # Persist Kafka data outside the container
     networks:
-      - linkedin-network
+      - linkedin-network # Allows other services to connect using kafka:9092
     environment:
-      # KRaft settings
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      # Listeners
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # Kafka running in KRaft mode (without ZooKeeper)
 
-  kafbat-ui:
+      - KAFKA_CFG_NODE_ID=0 # Unique node ID
+
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      # Single node acts as both:
+      # controller -> manages cluster metadata
+      # broker -> stores and serves messages
+
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      # Controller quorum definition
+      # Format: nodeId@hostname:port
+
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      # Opens:
+      # 9092 -> producer/consumer/application traffic
+      # 9093 -> controller communication
+
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      # Address Kafka advertises to clients
+      # Uses Docker DNS hostname 'kafka'
+
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      # Listener to protocol mapping
+
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      # Controller communication uses CONTROLLER listener
+
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      # Broker-to-broker communication listener
+
+  kafbat-ui: # Kafka monitoring and management UI. Docker DNS hostname: kafbat-ui
     container_name: kafbat-ui
     image: ghcr.io/kafbat/kafka-ui:latest
+
     ports:
       - 8090:8080
+      # Host port 8090 -> Container port 8080
+      # Access UI at http://localhost:8090
+
     depends_on:
       - kafka
+      # Start Kafka before Kafka UI
+
     networks:
       - linkedin-network
+
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      # Cluster name displayed in UI
 
-  notification-db:
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      # Connect to Kafka using Docker DNS hostname
+
+  notification-db: # PostgreSQL database for Notification Service. DNS hostname: notification-db
     image: postgres
     container_name: notification-db
+
     environment:
-      - POSTGRES_DB=notificationDB
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=notificationDB # Database created on startup
+      - POSTGRES_USER=user # Database username
+      - POSTGRES_PASSWORD=password # Database password
+
     networks:
       - linkedin-network
+
     volumes:
       - notification-db-data:/var/lib/postgresql/data
+      # Persist PostgreSQL data outside container
 
-  posts-db:
+  posts-db: # PostgreSQL database for Posts Service. DNS hostname: posts-db
     image: postgres
     container_name: posts-db
+
     environment:
       - POSTGRES_DB=postsDB
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
+
     networks:
       - linkedin-network
+
     volumes:
       - posts-db-data:/var/lib/postgresql/data
+      # Persist Posts database data
 
-  user-db:
+  user-db: # PostgreSQL database for User Service. DNS hostname: user-db
     image: postgres
     container_name: user-db
+
     environment:
       - POSTGRES_DB=userDB
       - POSTGRES_USER=user
       - POSTGRES_PASSWORD=password
+
     networks:
       - linkedin-network
+
     volumes:
       - user-db-data:/var/lib/postgresql/data
+      # Persist User database data
 
-  connections-db:
+  connections-db: # Neo4j graph database for user connections. DNS hostname: connections-db
     image: neo4j
     container_name: connections-db
+
     environment:
-      - NEO4J_AUTH=neo4j/password  # Set your username and password
+      - NEO4J_AUTH=neo4j/password
+      # Neo4j credentials
+
     ports:
-      - "7474:7474"  # HTTP port
-      - "7687:7687"  # Bolt port
+      - "7474:7474"
+      # Neo4j Web UI
+
+      - "7687:7687"
+      # Neo4j Bolt protocol (used by applications)
+
     volumes:
-      - connections-db-data:/data  # Persist data
+      - connections-db-data:/data
+      # Persist graph database data
+
     networks:
       - linkedin-network
 
-  discovery-server:
+  discovery-server: # Eureka Discovery Server. DNS hostname: discovery-server
     image: nikhiltiwarip29/linkedin-app-discovery-server
     container_name: discovery-server
+
     networks:
       - linkedin-network
+
     ports:
       - "8761:8761"
+      # Eureka dashboard available at localhost:8761
 
-  posts-service:
+  posts-service: # Spring Boot Posts Microservice. DNS hostname: posts-service
     build: ./posts-service
+    # Build image from local Dockerfile in posts-service folder
+
     container_name: posts-service
+
     networks:
       - linkedin-network
+
     depends_on:
       - discovery-server
       - posts-db
       - kafka
+      # Requires Eureka, PostgreSQL and Kafka
 
-  user-service:
+  user-service: # Spring Boot User Microservice. DNS hostname: user-service
     build: ./user-service
+
     container_name: user-service
+
     networks:
       - linkedin-network
+
     environment:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-dev-secret-key-min-32-chars-long!!}
+      # JWT signing key
+
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Connect to Kafka using Docker DNS hostname
+
     depends_on:
       - discovery-server
       - user-db
       - kafka
 
-  uploader-service:
+  uploader-service: # File upload service. DNS hostname: uploader-service
     build: ./uploader-service
+
     container_name: uploader-service
+
     networks:
       - linkedin-network
+
     depends_on:
       - discovery-server
 
-  notification-service:
+  notification-service: # Notification Microservice. DNS hostname: notification-service
     build: ./notification-service
+
     container_name: notification-service
+
     networks:
       - linkedin-network
+
     depends_on:
       - discovery-server
       - notification-db
       - kafka
 
-  connections-service:
+  connections-service: # Connections Microservice. DNS hostname: connections-service
     build: ./connections-service
+
     container_name: connections-service
+
     networks:
       - linkedin-network
+
     depends_on:
       - discovery-server
       - connections-db
       - kafka
 
-  api-gateway:
+  api-gateway: # Spring Cloud Gateway. Entry point for all client requests. DNS hostname: api-gateway
     build: ./api-gateway
+
     container_name: api-gateway
+
     ports:
       - "8080:8080"
+      # Public entry point to the microservices system
+
     networks:
       - linkedin-network
+
     environment:
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-dev-secret-key-min-32-chars-long!!}
+
     depends_on:
       - discovery-server
 
 networks:
   linkedin-network:
+    # Custom bridge network
+    # Enables container-to-container communication using service names
+    #
+    # Examples:
+    # kafka:9092
+    # notification-db:5432
+    # discovery-server:8761
 
 volumes:
-  kafka_data:
-  notification-db-data:
-  posts-db-data:
-  user-db-data:
-  connections-db-data:
+  kafka_data: # Persistent storage for Kafka
+
+  notification-db-data: # Persistent storage for Notification DB
+
+  posts-db-data: # Persistent storage for Posts DB
+
+  user-db-data: # Persistent storage for User DB
+
+  connections-db-data: # Persistent storage for Neo4j graph database
