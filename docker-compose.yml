@@ -83,7 +83,7 @@ services:
       - linkedin-network
 
   discovery-server:
-    image: nikhil55149/linkedin-app-discovery-server
+    image: nikhiltiwarip29/linkedin-app-discovery-server
     container_name: discovery-server
     networks:
       - linkedin-network
