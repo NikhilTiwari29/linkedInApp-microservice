@@ -15,7 +15,7 @@ services:
       - linkedin-network
 
   discovery-server:
-    image: nikhil55149/linkedin-app/discovery-server
+    image: nikhiltiwarip29/linkedin-app/discovery-server
     container_name: discovery-server
     networks:
       - linkedin-network
@@ -23,7 +23,7 @@ services:
       - "8761:8761"
 
   connections-service:
-    image: nikhil55149/linkedin-app/connections-service
+    image: nikhiltiwarip29/linkedin-app/connections-service
     container_name: connections-service
     networks:
       - linkedin-network
@@ -32,7 +32,7 @@ services:
       - connections-db
 
   api-gateway:
-    image: nikhil55149/linkedin-app/api-gateway
+    image: nikhiltiwarip29/linkedin-app/api-gateway
     container_name: api-gateway
     networks:
       - linkedin-network
